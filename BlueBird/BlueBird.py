@@ -77,38 +77,33 @@ class BlueBird:
         except Exception as ex:
             logger.error(ex)
 
-    def get_tweet(self, tweet_id: int):
-        """
-        The get_tweet function retrieves a tweet from the API using the given tweet ID.
-
-        :param self: Access the class attributes
-        :param tweet_id:int: The ID of the tweet to get
-        :return: An object, The result of the API call, or False if the tweet was not found
-        :doc-author: Trelent
-        """
+    def get_replies(self, tweet: tweepy.client.Response):
         try:
-            # Get the list of expansions, media fields, and tweet fields
+            tweet_author = str(self.client.get_user(id=tweet.data.author_id).data)
             expansions = list(self.expansions)[0]
             media_fields = list(self.media_fields)[0]
             tweet_fields = list(self.tweet_fields)[0]
-
-            # Make the API call to retrieve the tweet
-            result = self.client.get_tweet(
-                id=tweet_id,
-                user_auth=False,
+            place_fields = list(self.place_fields)[0]
+            poll_fields = list(self.poll_fields)[0]
+            user_fields = list(self.user_fields)[0]
+            str_query = "(url:{} from:{}) OR ( conversation_id:{} from:{})".format(tweet.data.conversation_id,
+                                                                                   tweet_author,
+                                                                                   tweet.data.conversation_id,
+                                                                                   tweet_author)
+            result = self.client.search_recent_tweets(
+                query=str_query,
                 expansions=expansions,
                 media_fields=media_fields,
-                tweet_fields=tweet_fields
+                tweet_fields=tweet_fields,
+                place_fields=place_fields,
+                poll_fields=poll_fields,
+                user_fields=user_fields
             )
-
-            # Check if the tweet was found
             if hasattr(result, 'data'):
                 return result
             else:
-                logger.error("Tweet ({}) not found.".format(tweet_id))
+                logger.error("Tweet replies ({}) not found.".format(tweet.data.conversation_id))
                 return False
-
-        # Log any exceptions
         except Exception as ex:
             logger.error(ex)
 
@@ -127,12 +122,10 @@ class BlueBird:
         try:
             logger.info("Searching the thread")
             main_tweet = self.get_tweet(tweet_id=tweet_id)
-            result = self.get_replies(
-                tweet_id=tweet_id,
-                tweet_author=str(self.client.get_user(id=main_tweet.data.author_id).data))
+            result = self.get_replies(tweet=main_tweet)
 
-            tweets = result.includes['tweets']
-            tweets.reverse()
+            tweets = [{item.id: item.text} for item in result.includes['tweets'] if not item.text.startswith("RT")]
+            tweets.sort(key=lambda item: list(item.keys())[0])
             logger.info("Thread with {} replies founded.".format(len(tweets)))
             return tweets
         except Exception as ex:
@@ -154,7 +147,7 @@ class BlueBird:
             in_reply = None
             url_return = None
             for tweet in tweets:
-                response = self.client.create_tweet(text=tweet.text, in_reply_to_tweet_id=in_reply)
+                response = self.client.create_tweet(text=list(tweet.values())[0], in_reply_to_tweet_id=in_reply)
                 if url_return is None:
                     url_return = "https://twitter.com/user/status/{}".format(response.data['id'])
                 in_reply = response.data['id']

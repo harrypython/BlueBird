@@ -1,5 +1,7 @@
 # BlueBird
-BlueBird can duplicate a thread in a popular social media and re-post the same content.    
+BlueBird can duplicate a thread in a popular social media and re-post the same content.
+
+Unfortunately will work only with posts from the last seven days.
 ## Requirements  
 - Python 3.8
 - [API authentication credentials](https://developer.twitter.com/)
