@@ -1,7 +1,9 @@
 import os
+import datetime
 from loguru import logger
 import tweepy
 from dotenv import load_dotenv, find_dotenv
+
 
 
 class BlueBird:
@@ -122,10 +124,24 @@ class BlueBird:
         try:
             logger.info("Searching the thread")
             main_tweet = self.get_tweet(tweet_id=tweet_id)
+            if (datetime.datetime.now().replace(tzinfo=None)-main_tweet.data.created_at.replace(tzinfo=None)).days > 7:
+                logger.error("This tweet has more than 7 days.")
+                quit()
+
             result = self.get_replies(tweet=main_tweet)
 
-            tweets = [{item.id: item.text} for item in result.includes['tweets'] if not item.text.startswith("RT")]
-            tweets.sort(key=lambda item: list(item.keys())[0])
+            # tweets = [{item.id: item.text} for item in result.includes['tweets'] if not item.text.startswith("RT")]
+            tweets = []
+            for tweet in [item for item in result.includes['tweets'] if not item.text.startswith("RT")]:
+                tweets.append(
+                    {
+                        tweet.id: dict(
+                            text=tweet.text,
+                            attachments=(None if tweet.attachments is None else tweet.attachments['media_keys'])
+                        )
+                    }
+                )
+            tweets = sorted(tweets, key=lambda x: list(x.keys())[0])
             logger.info("Thread with {} replies founded.".format(len(tweets)))
             return tweets
         except Exception as ex:
@@ -147,7 +163,11 @@ class BlueBird:
             in_reply = None
             url_return = None
             for tweet in tweets:
-                response = self.client.create_tweet(text=list(tweet.values())[0], in_reply_to_tweet_id=in_reply)
+                self.client.create_tweet()
+                response = self.client.create_tweet(
+                    text=list(tweet.values())[0]['text'],
+                    in_reply_to_tweet_id=in_reply
+                )
                 if url_return is None:
                     url_return = "https://twitter.com/user/status/{}".format(response.data['id'])
                 in_reply = response.data['id']
