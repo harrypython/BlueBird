@@ -34,16 +34,12 @@ def shorten_tweet(string_text: str, limit: int = 280):
 
     # Split the remaining text into words and add words to the result
     # until the length limit is reached
-    words = string_text.split()
-    result = ''
-    for word in words:
-        if len(result) + len(word) + 1 <= length:  # add 1 to account for the space
-            result += f'{word} '
-        else:
-            break
+    while len(string_text) > length:
+        words = string_text.split(" ")
+        string_text = " ".join(words[:-1]).strip()
 
     # Remove trailing space, if any, and add the final link to the result
-    return result.strip() + " " + link_final
+    return string_text.strip() + " " + link_final
 
 
 class BlueBird:
@@ -233,10 +229,11 @@ class BlueBird:
             in_reply = None  # initialize the in_reply variable to None
             url_return = None  # initialize the url_return variable to None
             for tweet in tweets:
-                # shorten the tweet text to fit the character limit and
+                # shorten the tweet text to fit the character limit
+                tweet_text = shorten_tweet(list(tweet.values())[0]['text'])
                 # create a tweet in reply to the previous tweet in the thread
                 response = self.client.create_tweet(
-                    text=shorten_tweet(list(tweet.values())[0]['text']),
+                    text=tweet_text,
                     in_reply_to_tweet_id=in_reply
                 )
                 # if url_return is None, set it to the URL of the first tweet created in the thread
